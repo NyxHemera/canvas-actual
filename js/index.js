@@ -1,120 +1,137 @@
-$(document).ready(function() { 
-	// Initialize Canvas
-	var canvas = document.createElement("canvas");
-	var ctx = canvas.getContext("2d");
-	var canvasEl = $(canvas);
+class CanvasActual {
 
-	var points = [];
-	var tempPoints = [];
-	var undonePoints = [];
-	var mouseDown = false;
+	constructor() {
 
-	init();
+		this.canvas = document.createElement("canvas");
+		this.ctx = this.canvas.getContext("2d");
+		this.canvasEl = $(this.canvas);
 
-	function init() {
-		canvas.id = "canvas-main";
-		canvas.width  = window.innerWidth;
-		canvas.height = window.innerHeight;
-		//canvas.width  = 500;
-		//canvas.height = 500;
-		$("body").append(canvasEl);
+		this.points = [];
+		this.tempPoints = [];
+		this.undonePoints = [];
+		this.mouseDown = false;
+
+		this.init();
+
 	}
 
-	function midPointBetween(p1, p2) {
+	init() {
+		this.canvas.id = "canvas-main";
+		this.canvas.width  = window.innerWidth;
+		this.canvas.height = window.innerHeight;
+		$('body').append(this.canvas);
+		//canvas.width  = 500;
+		//canvas.height = 500;
+		var self = this;
+		this.canvasEl.on("mousedown mousemove mouseup mouseleave", function(e) {
+			self.handleMouse(e);
+		});
+	}
+
+	midPointBetween(p1, p2) {
 		return {
 			x: p1.x + (p2.x - p1.x) / 2,
 			y: p1.y + (p2.y - p1.y) / 2
 		};
 	}
 
-	function addPoint(x, y) {
-		tempPoints.push({ x: x, y: y });
+	addPoint(x, y) {
+		this.tempPoints.push({ x: x, y: y });
 	}
 
-	function pushPoints() {
-		points.push(tempPoints);
+	pushPoints() {
+		this.points.push(this.tempPoints);
 
-		tempPoints = [];
+		this.tempPoints = [];
 	}
 
-	function undo() {
-		if(points.length) {
-			undonePoints.push(points.pop());
+	undo() {
+		if(this.points.length) {
+			this.undonePoints.push(this.points.pop());
 		}else {
 			console.log("Nothing to Undo");
 		}
 	}
 
-	function redo() {
-		if(undonePoints.length) {
-			points.push(undonePoints.pop());
+	redo() {
+		if(this.undonePoints.length) {
+			this.points.push(this.undonePoints.pop());
 		}else {
 			console.log("Nothing to Redo");
 		}
 	}
 
-	function drawSets() {
-		console.log(points);
-		ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-		for(var i=0; i<points.length; i++) {
-			draw(points[i]);
+	drawSets() {
+		//console.log(this.points);
+		this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+		for(var i=0; i<this.points.length; i++) {
+			this.draw(this.points[i]);
 		}
-		if(tempPoints.length) draw(tempPoints);
+		if(this.tempPoints.length) this.draw(this.tempPoints);
 	}
 
-	function draw(pSet) {
+	draw(pSet) {
 		var p1 = pSet[0];
 		var p2 = pSet[1];
 		
-		ctx.beginPath();
-		ctx.lineWidth = 5;
-		ctx.lineJoin = ctx.lineCap = 'round';
-		ctx.moveTo(p1.x, p1.y);
+		this.ctx.beginPath();
+		this.ctx.lineWidth = 5;
+		this.ctx.lineJoin = this.ctx.lineCap = 'round';
+		this.ctx.moveTo(p1.x, p1.y);
 
 		for (var i = 1; i < pSet.length; i++) {
 			// On the first run through, this draws a line between the first point and the midpoint
 			// On the second run through, the start point is the previously calculated midpoint
 			// The control is the second point in pSet
 			// The end point is the midpoint between the second and third points in pSet
-			var midPoint = midPointBetween(p1, p2);
-			ctx.quadraticCurveTo(p1.x, p1.y, midPoint.x, midPoint.y);
+			var midPoint = this.midPointBetween(p1, p2);
+			this.ctx.quadraticCurveTo(p1.x, p1.y, midPoint.x, midPoint.y);
 			p1 = pSet[i];
 			p2 = pSet[i+1];
 		}
 		// Once we run out of points, we draw a straight line to the final point in pSet.
-		ctx.lineTo(p1.x, p1.y);
-		ctx.stroke();
+		this.ctx.lineTo(p1.x, p1.y);
+		this.ctx.stroke();
 	}
 
-	canvasEl.mousedown(function(e) {
-		console.log("mousedown");
-		mouseDown = true;
-		addPoint(e.clientX - canvasEl.offset().left, e.clientY - canvasEl.offset().top);
-	});
+	handleMouse(e) {
+		var x = e.pageX - this.canvasEl.offset().left;
+		var y = e.pageY - this.canvasEl.offset().top;
 
-	canvasEl.mousemove(function(e) {
-		if(mouseDown) {
-			addPoint(e.clientX - canvasEl.offset().left, e.clientY - canvasEl.offset().top);
-			drawSets();		
+		switch(e.type) {
+			case "mousedown":
+				this.mouseDown = true;
+				this.addPoint(x, y); 
+				break;
+			case "mouseup":
+				if(this.mouseDown) {
+					this.addPoint(x, y);
+					this.pushPoints();
+					this.drawSets();
+				}
+				this.mouseDown = false;
+				break;
+			case "mouseleave":
+				if(this.mouseDown) {
+					this.addPoint(x, y);
+					this.pushPoints();
+					this.drawSets();
+				}
+				this.mouseDown = false;
+				break;
+			case "mousemove":
+				if(this.mouseDown) {
+					this.addPoint(x, y);
+					this.drawSets();		
+				}
+				break;
 		}
-	});
+	}
 
-	canvasEl.mouseup(function(e) {
-		if(mouseDown) {
-			addPoint(e.clientX - canvasEl.offset().left, e.clientY - canvasEl.offset().top);
-			pushPoints();
-			drawSets();
-		}
-		mouseDown = false;
-	});
+}
 
-	canvasEl.mouseleave(function(e) {
-		if(mouseDown) {
-			addPoint(e.clientX - canvasEl.offset().left, e.clientY - canvasEl.offset().top);
-			pushPoints();
-			drawSets();
-		}
-		mouseDown = false;
-	});
+var CA;
 
+$(document).ready(function() { 
+	CA = new CanvasActual();
 });

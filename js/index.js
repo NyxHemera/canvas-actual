@@ -22,6 +22,13 @@ class CanvasActual {
 		$('body').append(this.canvas);
 		//canvas.width  = 500;
 		//canvas.height = 500;
+
+		// Default ctx
+		this.tempPoints.push({
+			width: 5,
+			color: "black"
+		});
+
 		var self = this;
 		this.canvasEl.on("mousedown mousemove mouseup mouseleave", function(e) {
 			self.handleMouse(e);
@@ -41,8 +48,11 @@ class CanvasActual {
 
 	pushPoints() {
 		this.points.push(this.tempPoints);
-
 		this.tempPoints = [];
+		this.tempPoints.push({
+			width: this.ctx.lineWidth,
+			color: this.ctx.strokeStyle
+		});
 	}
 
 	undo() {
@@ -61,24 +71,41 @@ class CanvasActual {
 		}
 	}
 
+	setLineWidth(width) {
+		//this.ctx.lineWidth = width;
+		this.tempPoints[0].width = width;
+	}
+
+	setStrokeColor(color) {
+		//this.ctx.strokeStyle = color;
+		this.tempPoints[0].color = color;
+	}
+
 	drawSets() {
 		//console.log(this.points);
 		this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
 		for(var i=0; i<this.points.length; i++) {
 			this.draw(this.points[i]);
 		}
-		if(this.tempPoints.length) this.draw(this.tempPoints);
+		if(this.tempPoints.length > 1) this.draw(this.tempPoints);
 	}
 
 	draw(pSet) {
+		var attr = pSet.shift();
 		var p1 = pSet[0];
 		var p2 = pSet[1];
+
+		//console.log(pSet);
+
+		console.log(attr);
 		
 		this.ctx.beginPath();
-		this.ctx.lineWidth = 5;
+		this.ctx.lineWidth = attr.width;
 		this.ctx.lineJoin = this.ctx.lineCap = 'round';
+		this.ctx.strokeStyle = attr.color;
 		this.ctx.moveTo(p1.x, p1.y);
-
+		console.log(this.ctx.lineWidth);
+		
 		for (var i = 1; i < pSet.length; i++) {
 			// On the first run through, this draws a line between the first point and the midpoint
 			// On the second run through, the start point is the previously calculated midpoint
@@ -92,6 +119,8 @@ class CanvasActual {
 		// Once we run out of points, we draw a straight line to the final point in pSet.
 		this.ctx.lineTo(p1.x, p1.y);
 		this.ctx.stroke();
+		this.ctx.closePath();
+		pSet.unshift(attr);
 	}
 
 	handleMouse(e) {

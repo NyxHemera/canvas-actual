@@ -6,6 +6,9 @@ class CanvasActual {
 		this.ctx = this.canvas.getContext("2d");
 		this.canvasEl = $(this.canvas);
 
+		this.toolList = [new Pen(this), new Eraser(this), new Rectangle(this)];
+		this.toolbar = new ToolBar(this);
+
 		this.points = [];
 		this.tempPoints = [];
 		this.undonePoints = [];
@@ -97,14 +100,14 @@ class CanvasActual {
 
 		//console.log(pSet);
 
-		console.log(attr);
+		//console.log(attr);
 		
 		this.ctx.beginPath();
 		this.ctx.lineWidth = attr.width;
 		this.ctx.lineJoin = this.ctx.lineCap = 'round';
 		this.ctx.strokeStyle = attr.color;
 		this.ctx.moveTo(p1.x, p1.y);
-		console.log(this.ctx.lineWidth);
+		//console.log(this.ctx.lineWidth);
 		
 		for (var i = 1; i < pSet.length; i++) {
 			// On the first run through, this draws a line between the first point and the midpoint
@@ -155,6 +158,148 @@ class CanvasActual {
 				}
 				break;
 		}
+	}
+
+}
+
+class Tool {
+	constructor(CA) {
+		this.CA = CA;
+
+		this.color;
+		this.lineWidth;
+	}
+
+	toString() {
+		return "Generic Tool";
+	}
+}
+
+class Pen extends Tool {
+	constructor(CA) {
+		super(CA);
+	}
+
+	toString() {
+		return "Pen";
+	}
+}
+
+class Eraser extends Pen {
+	constructor(CA) {
+		super(CA);
+		this.color = "white";
+	}
+
+	toString() {
+		return "Eraser";
+	}
+}
+
+class Rectangle extends Tool {
+	constructor(CA) {
+		super(CA);
+
+	}
+
+	toString() {
+		return "Rectangle";
+	}
+}
+
+class ToolBar {
+	constructor(can) {
+		this.CA = can;
+		this.toolbar;
+
+		this.currentTool;
+		this.init();
+		this.dragging = false;
+		this.lastPos = [0,0];
+		this.handleEvents();
+	}
+
+	init() {
+		this.toolbar = $("<div class='toolbar draggable noselect'></div>");
+
+		// tool dropdown
+		this.initToolDrop();
+		// Background Color
+		this.initBackgroundColor();
+		// Line Color
+		this.initLineColor();
+		// Line Width
+		this.initLineWidth();
+
+		$('body').append(this.toolbar);
+		this.setTool();
+	}
+	initToolDrop() {
+		var toolDrop = $('<select class="tools"></select>');
+		for(var i=0; i<this.CA.toolList.length; i++) {
+			var tool = $("<option value= "+i+">" + this.CA.toolList[i].toString() + "</option>");
+			toolDrop.append(tool);
+		}
+		this.toolbar.append(toolDrop);
+		var self = this;
+		toolDrop.change(function(){self.setTool()});
+	}
+	initBackgroundColor() {
+		var bgColor = $("<label>BG: <input id='bgColor' type='color'></label>");
+		this.toolbar.append(bgColor);
+	}
+	initLineColor() {
+		var lineColor = $("<label>Line: <input id='lineColor' type='color'></label>");
+		this.toolbar.append(lineColor);
+		var self = this;
+		lineColor.change(function() { self.changeLineColor(); });
+	}
+	initLineWidth() {
+		var lineWidth = $("<label>Line Width: <input id='lineWidth' min='1' max='500' value='5' type='number'></label>");
+		this.toolbar.append(lineWidth);
+		var self = this;
+		lineWidth.change(function() { self.changeLineWidth(); });
+	}
+
+	setTool() {
+		this.currentTool = this.CA.toolList[$('.tools').val()];
+		console.log(this.currentTool);
+	}
+	changeLineColor() {
+		this.CA.setStrokeColor($('#lineColor').val());
+		console.log($('#lineColor').val());
+	}
+	changeLineWidth() {
+		this.CA.setLineWidth($('#lineWidth').val());
+		console.log($('#lineWidth').val());
+	}
+
+	moveToolBar(x, y) {
+		var left = $('.toolbar').position().left;
+		var top = $('.toolbar').position().top;
+		$('.toolbar').css('left', x+left);
+		$('.toolbar').css('top', y+top);
+	}
+
+	handleEvents() {
+		var self = this;
+		$(document).on("mousedown", ".draggable", function(e){
+		  self.dragging = true;
+		  self.lastPos[0] = e.clientX;
+		  self.lastPos[1] = e.clientY;
+		});
+
+		$(document).on("mouseup", ".draggable", function(e){
+			self.dragging = false;
+		});
+
+		$(document).on("mousemove", ".draggable", function(e) {
+			if(self.dragging) {
+				self.moveToolBar(e.clientX - self.lastPos[0], e.clientY - self.lastPos[1]);
+				self.lastPos[0] = e.clientX;
+				self.lastPos[1] = e.clientY;
+			}
+		});
 	}
 
 }

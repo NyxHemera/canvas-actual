@@ -20,8 +20,8 @@ class CanvasActual {
 
 	init() {
 		this.canvas.id = "canvas-main";
-		this.canvas.width  = window.innerWidth;
-		this.canvas.height = window.innerHeight;
+		this.canvas.width  = window.innerWidth/100 * 80;
+		this.canvas.height = window.innerHeight/100 * 80;
 		$('body').append(this.canvas);
 		//canvas.width  = 500;
 		//canvas.height = 500;
@@ -61,6 +61,7 @@ class CanvasActual {
 	undo() {
 		if(this.points.length) {
 			this.undonePoints.push(this.points.pop());
+			this.drawSets();
 		}else {
 			console.log("Nothing to Undo");
 		}
@@ -69,9 +70,16 @@ class CanvasActual {
 	redo() {
 		if(this.undonePoints.length) {
 			this.points.push(this.undonePoints.pop());
+			this.drawSets();
 		}else {
 			console.log("Nothing to Redo");
 		}
+	}
+
+	clear() {
+		this.points = [];
+		this.undonePoints = [];
+		this.drawSets();
 	}
 
 	setLineWidth(width) {
@@ -220,7 +228,7 @@ class ToolBar {
 	}
 
 	init() {
-		this.toolbar = $("<div class='toolbar draggable noselect'></div>");
+		this.toolbar = $("<div class='toolbar draggable noselect shadows'></div>");
 
 		// tool dropdown
 		this.initToolDrop();
@@ -230,6 +238,10 @@ class ToolBar {
 		this.initLineColor();
 		// Line Width
 		this.initLineWidth();
+		// Clear
+		this.initClear();
+		// UndoRedo
+		this.initRedo();
 
 		$('body').append(this.toolbar);
 		this.setTool();
@@ -259,6 +271,14 @@ class ToolBar {
 		this.toolbar.append(lineWidth);
 		var self = this;
 		lineWidth.change(function() { self.changeLineWidth(); });
+	}
+	initClear() {
+		var clear = $("<button class='btn btn-destroy' onClick='CA.clear()'>Clear</button>");
+		this.toolbar.append(clear);
+	}
+	initRedo() {
+		var redo = $("<div class='btn-group'><button class='btn btn-submit' onClick='CA.undo()'>Undo</button><button class='btn btn-submit'onClick='CA.redo()'>Redo</button></div>");
+		this.toolbar.append(redo);
 	}
 
 	setTool() {

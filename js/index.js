@@ -2,12 +2,13 @@ class CanvasActual {
 
 	constructor() {
 
-		this.canvas = document.createElement("canvas");
+		this.canvasEl = $("<canvas class='shadows'></canvas>");
+		this.canvas = this.canvasEl[0];
 		this.ctx = this.canvas.getContext("2d");
-		this.canvasEl = $(this.canvas);
 
 		this.toolList = [new Pen(this), new Eraser(this), new Rectangle(this)];
-		this.toolbar = new ToolBar(this);
+		this.toolbar;
+		this.currentTool = this.toolList[0];
 
 		this.points = [];
 		this.tempPoints = [];
@@ -22,27 +23,21 @@ class CanvasActual {
 		this.canvas.id = "canvas-main";
 		this.canvas.width  = window.innerWidth/100 * 80;
 		this.canvas.height = window.innerHeight/100 * 80;
-		$('body').append(this.canvas);
-		//canvas.width  = 500;
-		//canvas.height = 500;
+		$('#canvas-wrap').append(this.canvas);
 
-		// Default ctx
 		this.tempPoints.push({
 			width: 5,
-			color: "black"
+			color: "black",
+			fill: 'rgba(0,0,0,0)',
+			type: this.currentTool.toNum()
 		});
+		this.toolbar = new ToolBar(this);
+		this.drawSets();
 
 		var self = this;
 		this.canvasEl.on("mousedown mousemove mouseup mouseleave", function(e) {
 			self.handleMouse(e);
 		});
-	}
-
-	midPointBetween(p1, p2) {
-		return {
-			x: p1.x + (p2.x - p1.x) / 2,
-			y: p1.y + (p2.y - p1.y) / 2
-		};
 	}
 
 	addPoint(x, y) {
@@ -54,7 +49,9 @@ class CanvasActual {
 		this.tempPoints = [];
 		this.tempPoints.push({
 			width: this.ctx.lineWidth,
-			color: this.ctx.strokeStyle
+			color: this.ctx.strokeStyle,
+			fill: this.ctx.fillStyle,
+			type: this.currentTool.toNum()
 		});
 	}
 
@@ -92,46 +89,25 @@ class CanvasActual {
 		this.tempPoints[0].color = color;
 	}
 
-	drawSets() {
-		//console.log(this.points);
-		this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
-		for(var i=0; i<this.points.length; i++) {
-			this.draw(this.points[i]);
-		}
-		if(this.tempPoints.length > 1) this.draw(this.tempPoints);
+	setFillStyle(color) {
+		this.tempPoints[0].fill = color;
 	}
 
-	draw(pSet) {
-		var attr = pSet.shift();
-		var p1 = pSet[0];
-		var p2 = pSet[1];
-
-		//console.log(pSet);
-
-		//console.log(attr);
-		
-		this.ctx.beginPath();
-		this.ctx.lineWidth = attr.width;
-		this.ctx.lineJoin = this.ctx.lineCap = 'round';
-		this.ctx.strokeStyle = attr.color;
-		this.ctx.moveTo(p1.x, p1.y);
-		//console.log(this.ctx.lineWidth);
-		
-		for (var i = 1; i < pSet.length; i++) {
-			// On the first run through, this draws a line between the first point and the midpoint
-			// On the second run through, the start point is the previously calculated midpoint
-			// The control is the second point in pSet
-			// The end point is the midpoint between the second and third points in pSet
-			var midPoint = this.midPointBetween(p1, p2);
-			this.ctx.quadraticCurveTo(p1.x, p1.y, midPoint.x, midPoint.y);
-			p1 = pSet[i];
-			p2 = pSet[i+1];
+	drawSets() {
+		//console.log(this.points);
+		this.ctx.fillStyle = "#FFFFFF";
+		this.ctx.fillRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+		for(var i=0; i<this.points.length; i++) {
+			this.toolList[this.points[i][0].type].draw(this.points[i]);
 		}
-		// Once we run out of points, we draw a straight line to the final point in pSet.
-		this.ctx.lineTo(p1.x, p1.y);
-		this.ctx.stroke();
-		this.ctx.closePath();
-		pSet.unshift(attr);
+
+		if(this.tempPoints.length > 1) this.toolList[this.tempPoints[0].type].draw(this.tempPoints);
+
+	}
+
+	setTool(ct) {
+		this.currentTool = ct;
+		this.tempPoints[0].type = this.currentTool.toNum();
 	}
 
 	handleMouse(e) {
@@ -141,11 +117,11 @@ class CanvasActual {
 		switch(e.type) {
 			case "mousedown":
 				this.mouseDown = true;
-				this.addPoint(x, y); 
+				this.currentTool.processPoints(x, y);
 				break;
 			case "mouseup":
 				if(this.mouseDown) {
-					this.addPoint(x, y);
+					this.currentTool.processPoints(x, y);
 					this.pushPoints();
 					this.drawSets();
 				}
@@ -153,7 +129,7 @@ class CanvasActual {
 				break;
 			case "mouseleave":
 				if(this.mouseDown) {
-					this.addPoint(x, y);
+					this.currentTool.processPoints(x, y);
 					this.pushPoints();
 					this.drawSets();
 				}
@@ -161,7 +137,7 @@ class CanvasActual {
 				break;
 			case "mousemove":
 				if(this.mouseDown) {
-					this.addPoint(x, y);
+					this.currentTool.processPoints(x, y);
 					this.drawSets();		
 				}
 				break;
@@ -174,12 +150,53 @@ class Tool {
 	constructor(CA) {
 		this.CA = CA;
 
-		this.color;
-		this.lineWidth;
+	}
+
+	processPoints(x, y) {
+		this.CA.addPoint(x, y);
+	}
+
+	draw(pSet) {
+		var attr = pSet.shift();
+		var p1 = pSet[0];
+		var p2 = pSet[1];
+		var ctx = this.CA.ctx;
+		
+		ctx.beginPath();
+		ctx.lineWidth = attr.width;
+		ctx.lineJoin = ctx.lineCap = 'round';
+		ctx.strokeStyle = attr.color;
+		ctx.moveTo(p1.x, p1.y);
+		
+		for (var i = 1; i < pSet.length; i++) {
+			// On the first run through, this draws a line between the first point and the midpoint
+			// On the second run through, the start point is the previously calculated midpoint
+			// The control is the second point in pSet
+			// The end point is the midpoint between the second and third points in pSet
+			var midPoint = this.midPointBetween(p1, p2);
+			ctx.quadraticCurveTo(p1.x, p1.y, midPoint.x, midPoint.y);
+			p1 = pSet[i];
+			p2 = pSet[i+1];
+		}
+		// Once we run out of points, we draw a straight line to the final point in pSet.
+		ctx.lineTo(p1.x, p1.y);
+		ctx.stroke();
+		ctx.closePath();
+		pSet.unshift(attr);
+	}
+
+	midPointBetween(p1, p2) {
+		return {
+			x: p1.x + (p2.x - p1.x) / 2,
+			y: p1.y + (p2.y - p1.y) / 2
+		};
 	}
 
 	toString() {
 		return "Generic Tool";
+	}
+	toNum() {
+		return 0;
 	}
 }
 
@@ -190,6 +207,9 @@ class Pen extends Tool {
 
 	toString() {
 		return "Pen";
+	}
+	toNum() {
+		return 0;
 	}
 }
 
@@ -202,6 +222,9 @@ class Eraser extends Pen {
 	toString() {
 		return "Eraser";
 	}
+	toNum() {
+		return 1;
+	}
 }
 
 class Rectangle extends Tool {
@@ -210,8 +233,41 @@ class Rectangle extends Tool {
 
 	}
 
+	processPoints(x, y) {
+		if(this.CA.tempPoints[1] == undefined) {
+			this.CA.addPoint(x, y);
+			return;
+		}
+
+		var width = x - this.CA.tempPoints[1].x;
+		var height = y - this.CA.tempPoints[1].y;
+
+		this.CA.tempPoints[2] = { width: width, height: height };
+	}
+
+	draw(pSet) {
+		var attr = pSet.shift();
+		var ctx = this.CA.ctx;
+		ctx.beginPath();
+		ctx.lineWidth = attr.width;
+		ctx.lineJoin = 'miter';
+		ctx.lineCap = 'butt';
+		ctx.strokeStyle = attr.color;
+		ctx.fillStyle = attr.fill;
+		ctx.moveTo(pSet[0].x, pSet[0].y);
+		
+		ctx.strokeRect(pSet[0].x, pSet[0].y, pSet[1].width, pSet[1].height);
+		ctx.fillRect(pSet[0].x, pSet[0].y, pSet[1].width, pSet[1].height);
+
+		ctx.closePath();
+		pSet.unshift(attr);
+	}
+
 	toString() {
 		return "Rectangle";
+	}
+	toNum() {
+		return 2;
 	}
 }
 
@@ -243,7 +299,7 @@ class ToolBar {
 		// UndoRedo
 		this.initRedo();
 
-		$('body').append(this.toolbar);
+		$('#canvas-wrap').append(this.toolbar);
 		this.setTool();
 	}
 	initToolDrop() {
@@ -257,8 +313,10 @@ class ToolBar {
 		toolDrop.change(function(){self.setTool()});
 	}
 	initBackgroundColor() {
-		var bgColor = $("<label>BG: <input id='bgColor' type='color'></label>");
+		var bgColor = $("<label id='bglabel'>BG: <input id='bgColor' type='color'></label>");
 		this.toolbar.append(bgColor);
+		var self = this;
+		bgColor.change(function() { self.changeFillColor(); });
 	}
 	initLineColor() {
 		var lineColor = $("<label>Line: <input id='lineColor' type='color'></label>");
@@ -282,16 +340,23 @@ class ToolBar {
 	}
 
 	setTool() {
-		this.currentTool = this.CA.toolList[$('.tools').val()];
-		console.log(this.currentTool);
+		var val = $('.tools').val();
+		this.currentTool = this.CA.toolList[val];
+		this.CA.setTool(this.currentTool);
+		if(val == 2) {
+			$('#bglabel').css('display', 'initial');
+		}else {
+			$('#bglabel').css('display', 'none');
+		}
 	}
 	changeLineColor() {
 		this.CA.setStrokeColor($('#lineColor').val());
-		console.log($('#lineColor').val());
 	}
 	changeLineWidth() {
 		this.CA.setLineWidth($('#lineWidth').val());
-		console.log($('#lineWidth').val());
+	}
+	changeFillColor() {
+		this.CA.setFillStyle($('#bgColor').val());
 	}
 
 	moveToolBar(x, y) {
@@ -323,9 +388,3 @@ class ToolBar {
 	}
 
 }
-
-var CA;
-
-$(document).ready(function() { 
-	CA = new CanvasActual();
-});

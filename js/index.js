@@ -7,8 +7,8 @@ class CanvasActual {
 		this.ctx = this.canvas.getContext("2d");
 
 		this.toolList = [new Pen(this), new Eraser(this), new Rectangle(this)];
+		this.currentTool;
 		this.toolbar;
-		this.currentTool = this.toolList[0];
 
 		this.points = [];
 		this.tempPoints = [];
@@ -25,12 +25,7 @@ class CanvasActual {
 		this.canvas.height = window.innerHeight/100 * 80;
 		$('#canvas-wrap').append(this.canvas);
 
-		this.tempPoints.push({
-			width: 5,
-			color: "black",
-			fill: 'rgba(0,0,0,0)',
-			type: this.currentTool.toNum()
-		});
+		// This places the Toolbar within the canvas-wrap element
 		this.toolbar = new ToolBar(this);
 		this.drawSets();
 
@@ -47,12 +42,7 @@ class CanvasActual {
 	pushPoints() {
 		this.points.push(this.tempPoints);
 		this.tempPoints = [];
-		this.tempPoints.push({
-			width: this.ctx.lineWidth,
-			color: this.ctx.strokeStyle,
-			fill: this.ctx.fillStyle,
-			type: this.currentTool.toNum()
-		});
+		this.currentTool.initPoints();
 	}
 
 	undo() {
@@ -80,12 +70,10 @@ class CanvasActual {
 	}
 
 	setLineWidth(width) {
-		//this.ctx.lineWidth = width;
 		this.tempPoints[0].width = width;
 	}
 
 	setStrokeColor(color) {
-		//this.ctx.strokeStyle = color;
 		this.tempPoints[0].color = color;
 	}
 
@@ -107,7 +95,8 @@ class CanvasActual {
 
 	setTool(ct) {
 		this.currentTool = ct;
-		this.tempPoints[0].type = this.currentTool.toNum();
+		this.currentTool.initPoints();
+		//this.tempPoints[0].type = this.currentTool.toNum();
 	}
 
 	handleMouse(e) {
@@ -149,7 +138,21 @@ class CanvasActual {
 class Tool {
 	constructor(CA) {
 		this.CA = CA;
+		this.join = 'round';
+		this.cap = 'round';
+	}
 
+	initPoints() {
+		var ctx = this.CA.ctx;
+
+		this.CA.tempPoints[0] = {
+			width: $('#lineWidth').val(), // Assigns last width used
+			stroke: $('#lineColor').val(), // Assigns last stroke used
+			fill: $('#bgColor').val(), // Assigns last fill used
+			join: this.join,
+			cap: this.cap,
+			type: this.toNum()
+		};
 	}
 
 	processPoints(x, y) {
@@ -164,7 +167,8 @@ class Tool {
 		
 		ctx.beginPath();
 		ctx.lineWidth = attr.width;
-		ctx.lineJoin = ctx.lineCap = 'round';
+		ctx.lineJoin = attr.join
+		ctx.lineCap = attr.cap;
 		ctx.strokeStyle = attr.color;
 		ctx.moveTo(p1.x, p1.y);
 		
@@ -230,7 +234,8 @@ class Eraser extends Pen {
 class Rectangle extends Tool {
 	constructor(CA) {
 		super(CA);
-
+		this.join = 'miter';
+		this.cap = 'butt';
 	}
 
 	processPoints(x, y) {
@@ -250,8 +255,8 @@ class Rectangle extends Tool {
 		var ctx = this.CA.ctx;
 		ctx.beginPath();
 		ctx.lineWidth = attr.width;
-		ctx.lineJoin = 'miter';
-		ctx.lineCap = 'butt';
+		ctx.lineJoin = attr.join;
+		ctx.lineCap = attr.cap;
 		ctx.strokeStyle = attr.color;
 		ctx.fillStyle = attr.fill;
 		ctx.moveTo(pSet[0].x, pSet[0].y);
@@ -313,28 +318,39 @@ class ToolBar {
 		toolDrop.change(function(){self.setTool()});
 	}
 	initBackgroundColor() {
+		// Create and set in toolbar
 		var bgColor = $("<label id='bglabel'>BG: <input id='bgColor' type='color'></label>");
 		this.toolbar.append(bgColor);
+
+		// Handle Events
 		var self = this;
 		bgColor.change(function() { self.changeFillColor(); });
 	}
 	initLineColor() {
+		// Create and set in toolbar
 		var lineColor = $("<label>Line: <input id='lineColor' type='color'></label>");
 		this.toolbar.append(lineColor);
+		
+		// Handle Events
 		var self = this;
 		lineColor.change(function() { self.changeLineColor(); });
 	}
 	initLineWidth() {
+		// Create and set in toolbar
 		var lineWidth = $("<label>Line Width: <input id='lineWidth' min='1' max='500' value='5' type='number'></label>");
 		this.toolbar.append(lineWidth);
+		
+		// Handle Events
 		var self = this;
 		lineWidth.change(function() { self.changeLineWidth(); });
 	}
 	initClear() {
+		// Create and set in toolbar
 		var clear = $("<button class='btn btn-destroy' onClick='CA.clear()'>Clear</button>");
 		this.toolbar.append(clear);
 	}
 	initRedo() {
+		// Create and set in toolbar
 		var redo = $("<div class='btn-group'><button class='btn btn-submit' onClick='CA.undo()'>Undo</button><button class='btn btn-submit'onClick='CA.redo()'>Redo</button></div>");
 		this.toolbar.append(redo);
 	}
@@ -342,7 +358,11 @@ class ToolBar {
 	setTool() {
 		var val = $('.tools').val();
 		this.currentTool = this.CA.toolList[val];
+		// Refresh values to defaults
+		this.currentTool.initPoints();
 		this.CA.setTool(this.currentTool);
+
+		// Remove bgColor if not shape
 		if(val == 2) {
 			$('#bglabel').css('display', 'initial');
 		}else {

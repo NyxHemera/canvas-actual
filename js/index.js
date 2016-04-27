@@ -16,6 +16,7 @@ class CanvasActual {
 		this.mouseDown = false;
 		this.shifted = false;
 		this.lastMove = {x: 0, y: 0};
+		this.lastEvent = "";
 
 		this.init();
 
@@ -79,12 +80,12 @@ class CanvasActual {
 		this.tempPoints[0].width = width;
 	}
 
-	setStrokeColor(color) {
-		this.tempPoints[0].color = color;
+	setStrokeColor(stroke) {
+		this.tempPoints[0].stroke = stroke;
 	}
 
-	setFillStyle(color) {
-		this.tempPoints[0].fill = color;
+	setFillStyle(fill) {
+		this.tempPoints[0].fill = fill;
 	}
 
 	drawSets() {
@@ -110,6 +111,8 @@ class CanvasActual {
 			case "touchstart":
 				var x = e.originalEvent.touches[0].pageX - this.canvasEl.offset().left;
 				var y = e.originalEvent.touches[0].pageY - this.canvasEl.offset().top;
+				this.lastMove.x = x;
+				this.lastMove.y = y;
 
 				// Prevent Mouse Events and prevent scrolling
 				e.stopPropagation();
@@ -237,7 +240,7 @@ class Tool {
 		ctx.lineWidth = attr.width;
 		ctx.lineJoin = attr.join
 		ctx.lineCap = attr.cap;
-		ctx.strokeStyle = attr.color;
+		ctx.strokeStyle = attr.stroke;
 		ctx.moveTo(p1.x, p1.y);
 		
 		for (var i = 1; i < pSet.length; i++) {
@@ -288,7 +291,6 @@ class Pen extends Tool {
 class Eraser extends Pen {
 	constructor(CA) {
 		super(CA);
-		this.color = "white";
 	}
 
 	toString() {
@@ -335,7 +337,7 @@ class Rectangle extends Tool {
 		ctx.lineWidth = attr.width;
 		ctx.lineJoin = attr.join;
 		ctx.lineCap = attr.cap;
-		ctx.strokeStyle = attr.color;
+		ctx.strokeStyle = attr.stroke;
 		ctx.fillStyle = attr.fill;
 		ctx.moveTo(pSet[0].x, pSet[0].y);
 		
@@ -385,7 +387,7 @@ class Ellipse extends Tool {
 		ctx.lineWidth = attr.width;
 		ctx.lineJoin = attr.join;
 		ctx.lineCap = attr.cap;
-		ctx.strokeStyle = attr.color;
+		ctx.strokeStyle = attr.stroke;
 		ctx.fillStyle = attr.fill;
 		
 		if(attr.circle) {
@@ -495,6 +497,14 @@ class ToolBar {
 		// Refresh values to defaults
 		this.currentTool.initPoints();
 		this.CA.setTool(this.currentTool);
+
+		
+		if(val == 1) {
+			$('#lineWidth').val(25);
+			$('#lineColor').val('#FFFFFF');
+			this.changeLineColor();
+			this.changeLineWidth();
+		}
 
 		// Remove bgColor if not shape
 		if(val == 2 || val == 3) {

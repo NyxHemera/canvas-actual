@@ -6,7 +6,7 @@ class CanvasActual {
 		this.canvas = this.canvasEl[0];
 		this.ctx = this.canvas.getContext("2d");
 
-		this.toolList = [new Pen(this), new Eraser(this), new Rectangle(this)];
+		this.toolList = [new Pen(this), new Eraser(this), new Rectangle(this), new Ellipse(this)];
 		this.currentTool;
 		this.toolbar;
 
@@ -276,6 +276,55 @@ class Rectangle extends Tool {
 	}
 }
 
+class Ellipse extends Tool {
+	constructor(CA) {
+		super(CA);
+		this.join = 'miter';
+		this.cap = 'butt';
+	}
+
+	processPoints(x, y) {
+		var tempPoints = this.CA.tempPoints;
+		if(tempPoints[1] == undefined) {
+			this.CA.addPoint(x, y);
+			return;
+		}
+
+		tempPoints[2] = { x: x, y: y };
+
+		tempPoints[0].center = this.midPointBetween(tempPoints[1], tempPoints[2]);
+		tempPoints[0].radius = {x: Math.abs((tempPoints[1].x - tempPoints[2].x)/2), y: Math.abs((tempPoints[1].y - tempPoints[2].y)/2)};
+		tempPoints[0].sAng = 0;
+		tempPoints[0].eAng = 2*Math.PI;
+		tempPoints[0].rotation = 0;
+	}
+
+	draw(pSet) {
+		var attr = pSet.shift();
+		var ctx = this.CA.ctx;
+		ctx.beginPath();
+		ctx.lineWidth = attr.width;
+		ctx.lineJoin = attr.join;
+		ctx.lineCap = attr.cap;
+		ctx.strokeStyle = attr.color;
+		ctx.fillStyle = attr.fill;
+		
+		ctx.ellipse(attr.center.x, attr.center.y, attr.radius.x, attr.radius.y, attr.rotation, attr.sAng, attr.eAng);
+
+		ctx.fill();
+		ctx.stroke();
+		ctx.closePath();
+		pSet.unshift(attr);
+	}
+
+	toString() {
+		return "Ellipse";
+	}
+	toNum() {
+		return 3;
+	}
+}
+
 class ToolBar {
 	constructor(can) {
 		this.CA = can;
@@ -363,7 +412,7 @@ class ToolBar {
 		this.CA.setTool(this.currentTool);
 
 		// Remove bgColor if not shape
-		if(val == 2) {
+		if(val == 2 || val == 3) {
 			$('#bglabel').css('display', 'initial');
 		}else {
 			$('#bglabel').css('display', 'none');

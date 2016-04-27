@@ -15,6 +15,7 @@ class CanvasActual {
 		this.undonePoints = [];
 		this.mouseDown = false;
 		this.shifted = false;
+		this.lastMove = {x: 0, y: 0};
 
 		this.init();
 
@@ -33,6 +34,9 @@ class CanvasActual {
 		var self = this;
 		this.canvasEl.on("mousedown mousemove mouseup mouseleave", function(e) {
 			self.handleMouse(e);
+		});
+		this.canvasEl.on("touchstart touchmove touchend", function(e) {
+			self.handleTouch(e);
 		});
 		$(document).on("keydown keyup", function(e) { self.handleKeys(e); });
 	}
@@ -101,12 +105,56 @@ class CanvasActual {
 		//this.tempPoints[0].type = this.currentTool.toNum();
 	}
 
+	handleTouch(e) {
+		switch(e.type) {
+			case "touchstart":
+				var x = e.originalEvent.touches[0].pageX - this.canvasEl.offset().left;
+				var y = e.originalEvent.touches[0].pageY - this.canvasEl.offset().top;
+
+				// Prevent Mouse Events and prevent scrolling
+				e.stopPropagation();
+				e.preventDefault();
+				this.mouseDown = true;
+				this.currentTool.processPoints(x, y);
+				break;
+			case "touchend":
+				if(this.mouseDown) {
+					var x = this.lastMove.x;
+					var y = this.lastMove.y;
+
+					// Prevent Mouse Events and prevent scrolling
+					e.stopPropagation();
+					e.preventDefault();
+					this.currentTool.processPoints(x, y);
+					this.pushPoints();
+					this.drawSets();
+				}
+				this.mouseDown = false;
+				break;
+			case "touchmove":
+				if(this.mouseDown) {
+					var x = e.originalEvent.touches[0].pageX - this.canvasEl.offset().left;
+					var y = e.originalEvent.touches[0].pageY - this.canvasEl.offset().top;
+					this.lastMove.x = x;
+					this.lastMove.y = y;
+
+					// Prevent Mouse Events and prevent scrolling
+					e.stopPropagation();
+					e.preventDefault();
+					this.currentTool.processPoints(x, y);
+					this.drawSets();		
+				}
+				break;
+		}
+	}
+
 	handleMouse(e) {
 		var x = e.pageX - this.canvasEl.offset().left;
 		var y = e.pageY - this.canvasEl.offset().top;
 
 		switch(e.type) {
 			case "mousedown":
+				console.log(e);
 				this.mouseDown = true;
 				this.currentTool.processPoints(x, y);
 				break;
@@ -275,8 +323,9 @@ class Rectangle extends Tool {
 				(height > 0 && width > 0) || (height < 0 && width < 0)  ? width = height : width = height*-1;
 			}
 		}
-
+		console.log(width);
 		this.CA.tempPoints[2] = { width: width, height: height };
+		console.log(this.CA.tempPoints);
 	}
 
 	draw(pSet) {
@@ -488,6 +537,32 @@ class ToolBar {
 				self.moveToolBar(e.clientX - self.lastPos[0], e.clientY - self.lastPos[1]);
 				self.lastPos[0] = e.clientX;
 				self.lastPos[1] = e.clientY;
+			}
+		});
+		$(document).on("touchstart", ".draggable", function(e){
+		  self.dragging = true;
+			// Prevent Mouse Events and prevent scrolling
+			e.stopPropagation();
+			e.preventDefault();		  
+		  self.lastPos[0] = e.originalEvent.touches[0].clientX;
+		  self.lastPos[1] = e.originalEvent.touches[0].clientY;
+		});
+
+		$(document).on("touchend", ".draggable", function(e){
+			self.dragging = false;
+			// Prevent Mouse Events and prevent scrolling
+			e.stopPropagation();
+			e.preventDefault();
+		});
+
+		$(document).on("touchmove", ".draggable", function(e) {
+			// Prevent Mouse Events and prevent scrolling
+			e.stopPropagation();
+			e.preventDefault();
+			if(self.dragging) {
+				self.moveToolBar(e.originalEvent.touches[0].clientX - self.lastPos[0], e.originalEvent.touches[0].clientY - self.lastPos[1]);
+			  self.lastPos[0] = e.originalEvent.touches[0].clientX;
+			  self.lastPos[1] = e.originalEvent.touches[0].clientY;
 			}
 		});
 	}

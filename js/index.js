@@ -14,6 +14,7 @@ class CanvasActual {
 		this.tempPoints = [];
 		this.undonePoints = [];
 		this.mouseDown = false;
+		this.shifted = false;
 
 		this.init();
 
@@ -33,6 +34,7 @@ class CanvasActual {
 		this.canvasEl.on("mousedown mousemove mouseup mouseleave", function(e) {
 			self.handleMouse(e);
 		});
+		$(document).on("keydown keyup", function(e) { self.handleKeys(e); });
 	}
 
 	addPoint(x, y) {
@@ -133,6 +135,24 @@ class CanvasActual {
 		}
 	}
 
+	handleKeys(e) {
+		switch(e.type) {
+			case 'keydown':
+				switch(e.keyCode) {
+					case 16:
+						this.shifted = true;
+						break;
+				}
+				break;
+			case 'keyup':
+				switch(e.keyCode) {
+					case 16:
+						this.shifted = false;
+						break;
+				}
+				break;
+		}
+	}
 }
 
 class Tool {
@@ -247,6 +267,15 @@ class Rectangle extends Tool {
 		var width = x - this.CA.tempPoints[1].x;
 		var height = y - this.CA.tempPoints[1].y;
 
+		if(this.CA.shifted) {
+			if(Math.abs(width) > Math.abs(height)) {
+				// If both are positive or both are negative, else
+				(height > 0 && width > 0) || (height < 0 && width < 0)  ? height = width : height = width*-1;
+			}else {
+				(height > 0 && width > 0) || (height < 0 && width < 0)  ? width = height : width = height*-1;
+			}
+		}
+
 		this.CA.tempPoints[2] = { width: width, height: height };
 	}
 
@@ -297,6 +326,7 @@ class Ellipse extends Tool {
 		tempPoints[0].sAng = 0;
 		tempPoints[0].eAng = 2*Math.PI;
 		tempPoints[0].rotation = 0;
+		tempPoints[0].circle = this.CA.shifted; 
 	}
 
 	draw(pSet) {
@@ -309,10 +339,16 @@ class Ellipse extends Tool {
 		ctx.strokeStyle = attr.color;
 		ctx.fillStyle = attr.fill;
 		
-		ctx.ellipse(attr.center.x, attr.center.y, attr.radius.x, attr.radius.y, attr.rotation, attr.sAng, attr.eAng);
+		if(attr.circle) {
+			var radMax = attr.radius.x > attr.radius.y ? attr.radius.x : attr.radius.y;
+			ctx.arc(attr.center.x, attr.center.y, radMax, attr.sAng, attr.eAng);
+		}else {
+			ctx.ellipse(attr.center.x, attr.center.y, attr.radius.x, attr.radius.y, attr.rotation, attr.sAng, attr.eAng);
+		}
 
 		ctx.fill();
 		ctx.stroke();
+
 		ctx.closePath();
 		pSet.unshift(attr);
 	}
@@ -455,5 +491,4 @@ class ToolBar {
 			}
 		});
 	}
-
 }

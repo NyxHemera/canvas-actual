@@ -541,18 +541,12 @@ class ToolBar {
 		});
 		$(document).on("touchstart", ".draggable", function(e){
 		  self.dragging = true;
-			// Prevent Mouse Events and prevent scrolling
-			e.stopPropagation();
-			e.preventDefault();		  
 		  self.lastPos[0] = e.originalEvent.touches[0].clientX;
 		  self.lastPos[1] = e.originalEvent.touches[0].clientY;
 		});
 
 		$(document).on("touchend", ".draggable", function(e){
 			self.dragging = false;
-			// Prevent Mouse Events and prevent scrolling
-			e.stopPropagation();
-			e.preventDefault();
 		});
 
 		$(document).on("touchmove", ".draggable", function(e) {
